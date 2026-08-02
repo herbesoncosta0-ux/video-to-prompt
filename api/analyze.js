@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     });
 
     // Modelo atualizado e garantido
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     // Requisição para a IA
     const result = await model.generateContent([
