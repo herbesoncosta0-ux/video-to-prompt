@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       displayName: videoFile.originalFilename || 'video.mp4',
     });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     // Envio correto do objeto do arquivo
     const result = await model.generateContent([
