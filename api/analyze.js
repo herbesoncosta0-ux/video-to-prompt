@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleAIFileManager } from '@google/generative-ai/server';
 import formidable from 'formidable';
+import fs from 'fs';
 
 export const config = {
   api: {
@@ -28,35 +28,24 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Chave API não configurada na Vercel.' });
     }
 
-    const fileManager = new GoogleAIFileManager(apiKey);
+    // Lê o arquivo diretamente como Buffer e converte em base64
+    const fileBuffer = fs.readFileSync(videoFile.filepath);
+    const base64Video = fileBuffer.toString('base64');
+
     const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    // Upload do vídeo para os servidores do Gemini
-    const uploadResult = await fileManager.uploadFile(videoFile.filepath, {
-      mimeType: videoFile.mimetype || 'video/mp4',
-      displayName: videoFile.originalFilename || 'video.mp4',
-    });
-
-    // Modelo atualizado e garantido
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-
-    // Requisição para a IA
     const result = await model.generateContent([
       {
-        fileData: {
-          fileUri: uploadResult.file.uri,
-          mimeType: uploadResult.file.mimeType,
+        inlineData: {
+          data: base64Video,
+          mimeType: videoFile.mimetype || 'video/mp4',
         },
       },
       {
-        text: 'Analise este vídeo detalhadamente e crie um prompt profissional em português para recriar um vídeo ou imagem com a mesma estética, iluminação, cenário, enquadramento e estilo.',
+        text: 'Analise este vídeo e gere um prompt em português altamente detalhado descrevendo a cena, estética, vestuário, iluminação, cores e enquadramento para recriar esta cena.',
       },
     ]);
-
-    // Apaga o arquivo do servidor temporário do Gemini
-    try {
-      await fileManager.deleteFile(uploadResult.file.name);
-    } catch (e) {}
 
     return res.status(200).json({ prompt: result.response.text() });
   } catch (error) {
