@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import formidable from 'formidable';
 import fs from 'fs';
 
@@ -23,31 +23,40 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhum vídeo foi enviado.' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Chave API não configurada na Vercel.' });
+      return res.status(500).json({ error: 'Chave OPENAI_API_KEY não configurada na Vercel.' });
     }
 
-    // Lê o arquivo diretamente como Buffer e converte em base64
     const fileBuffer = fs.readFileSync(videoFile.filepath);
-    const base64Video = fileBuffer.toString('base64');
+    const base64Data = fileBuffer.toString('base64');
+    const mimeType = videoFile.mimetype || 'video/mp4';
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const openai = new OpenAI({ apiKey });
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64Video,
-          mimeType: videoFile.mimetype || 'video/mp4',
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Analise este conteúdo visual e crie um prompt detalhado em português descrevendo a estética, vestuário, cores, iluminação, cenário e enquadramento para recriar o conteúdo.',
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Data}`,
+              },
+            },
+          ],
         },
-      },
-      {
-        text: 'Analise este vídeo e gere um prompt em português altamente detalhado descrevendo a cena, estética, vestuário, iluminação, cores e enquadramento para recriar esta cena.',
-      },
-    ]);
+      ],
+      max_tokens: 1000,
+    });
 
-    return res.status(200).json({ prompt: result.response.text() });
+    return res.status(200).json({ prompt: response.choices[0].message.content });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: error.message || 'Erro ao processar o vídeo.' });
