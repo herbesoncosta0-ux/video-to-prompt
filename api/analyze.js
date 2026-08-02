@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import formidable from 'formidable';
-import fs from 'fs';
 
 export const config = {
   api: {
@@ -32,15 +31,16 @@ export default async function handler(req, res) {
     const fileManager = new GoogleAIFileManager(apiKey);
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Upload do arquivo para a API do Gemini
+    // Upload do vídeo para os servidores do Gemini
     const uploadResult = await fileManager.uploadFile(videoFile.filepath, {
       mimeType: videoFile.mimetype || 'video/mp4',
       displayName: videoFile.originalFilename || 'video.mp4',
     });
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    // Modelo atualizado e garantido
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    // Envio correto do objeto do arquivo
+    // Requisição para a IA
     const result = await model.generateContent([
       {
         fileData: {
@@ -49,16 +49,14 @@ export default async function handler(req, res) {
         },
       },
       {
-        text: 'Analise este vídeo detalhadamente e crie um prompt em português para recriar um vídeo ou imagem com a mesma estética, elementos visuais, iluminação, cores, enquadramento e estilo.',
+        text: 'Analise este vídeo detalhadamente e crie um prompt profissional em português para recriar um vídeo ou imagem com a mesma estética, iluminação, cenário, enquadramento e estilo.',
       },
     ]);
 
-    // Limpa o arquivo temporário
+    // Apaga o arquivo do servidor temporário do Gemini
     try {
       await fileManager.deleteFile(uploadResult.file.name);
-    } catch (e) {
-      // Ignora erro de limpeza
-    }
+    } catch (e) {}
 
     return res.status(200).json({ prompt: result.response.text() });
   } catch (error) {
